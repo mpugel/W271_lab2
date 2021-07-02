@@ -65,15 +65,150 @@ title(main = "Monthly Mean CO2 Variation")
 
 **Part 1 (3 points)**
 
-Conduct a comprehensive Exploratory Data Analysis on the `co2` series. This should include (without being limited to) a thorough investigation of the trend, seasonal and irregular elements. 
+Conduct a comprehensive Exploratory Data Analysis on the `co2` series. This should include (without being limited to) a thorough investigation of the trend, seasonal and irregular elements.
+
+**Response:**
+We started off the EDA with looking at the general statistics of the data. The looks like there is a value every month start in 1959, there are zero missing values, and the frequency of the data is 12, which makes sense since there are 12 months in a year. The mean of the data set is 337.1 and the range is from 313.2 to 366.8. The histogram of the data shows that the data is generally equal throughout the range, the data is not skewed in any direction. From the boxplot graph, we can see that mean of the data seems to decrease in the second half of the year, showing there might be a bit of a seasonal trend in the data. 
+
+The decomposition plot shows a strong trend in the data as well as a strong seasonality trend, which showed to us that we might think about using a seasonal model later on and that the data might need to be difference in order to be made stationary. Lastly, from the ACF, the data does not quickly go to zero and therefore this may mean that the data is not stationary and we may need to difference the data, and the PACF graph shows two spikes in the beginning and another two spikes 12 months in, which makes us think that a model will need not only a moving average term of 1 or 2 but also a seasonal moving average term of 1 or 2. 
+
+Overall, the data looks very clean with very strong trend and seasonality impacts which will need to be correctly modeled to obtain good time series predictions. 
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE,warning=FALSE, message=FALSE)
+
+# Load required libraries
+library(car)
+library(dplyr)
+library(Hmisc)
+library(ggplot2)
+library(ggfortify)
+library(plotly)
+library(astsa)
+library(fable)
+library(fpp3)
+library(gridExtra)
+library(grid)
+library(forecast)
+library(tseries)
+```
+
+
+```{r}
+head(co2)
+
+sum(is.na(co2))
+
+frequency(co2)
+
+summary(co2)
+```
+
+```{r}
+autoplot(acf(co2,plot=FALSE)) + theme_classic()
+
+autoplot(pacf(co2,plot=FALSE)) + theme_classic()
+```
+
+```{r}
+boxplot(co2~cycle(co2))
+```
+```{r}
+hist(co2)
+
+```
+```{r}
+decompose_data1 <- decompose(co2,"multiplicative")
+autoplot(decompose_data1)
+```
 
 **Part 2 (3 points)**
 
 Fit a linear time trend model to the `co2` series, and examine the characteristics of the residuals. Compare this to a higher-order polynomial time trend model. Discuss whether a logarithmic transformation of the data would be appropriate. Fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts up to the present. 
 
+**Response:**
+
+
+
+```{r}
+linear_model <- tslm(co2~trend)
+summary(linear_model)
+
+res <- resid(linear_model)
+
+plot(fitted(linear_model), res)
+
+qqnorm(res)
+qqline(res) 
+```
+```{r}
+quad_model <- tslm(co2~I(trend^2))
+summary(quad_model)
+
+res <- resid(quad_model)
+
+plot(fitted(quad_model), res)
+
+qqnorm(res)
+qqline(res) 
+```
+```{r}
+seasonal_model <- tslm(co2~ I(trend^2) + seasonaldummy(co2))
+
+summary(seasonal_model)
+
+res <- resid(seasonal_model)
+
+plot(fitted(seasonal_model), res)
+
+qqnorm(res)
+qqline(res) 
+```
+
+```{r}
+#forecast <- forecast(seasonal_model, h=300, level=95)
+
+#plot(forecast)
+
+```
+
+
 **Part 3 (4 points)**
 
 Following all appropriate steps, choose an ARIMA model to fit to this `co2` series. Discuss the characteristics of your model and how you selected between alternative ARIMA specifications. Use your model to generate forecasts to the present. 
+
+**Response:**
+Below I have fitted the best ARIMA model from multiple iterations, the starting point coming from looking at some of the EDA graphs completed above. Since there is a strong seasonality cycle in the decomposition plot, I will be using a seasonal ARIMA model. In a seasonal ARIMA model the format is shown below:            
+      ARIMA(p,d,q)(P,D,Q)m
+      
+From this model, the lowercase letters are for the non-seasonal terms and the uppercase letters are the seasonal terms with m being the seasonal frequency. The p is the auto-regressive value, the d is the differencing term, and the q is the moving average term. 
+
+From the EDA completed above, there were a key points to take into consideration when deciding what kind of ARIMA model to use. First, from the decomposition plot, there is an obvious trend, which will need to be taken out by differencing once. However, I was not sure if it should be a seasonal or non-seasonal differencing value, therefore I tested both to see which had better results. From the ACF plot in the EDA section, the values do not decline towards zero quickly, therefore the auto-regressive value will definitely not be zero. Lastly, for the PACF graph shows that the model may have a moving average value of 1 or 2 and a seasonal moving average value of 1 or 2. 
+
+With all of these values as starting points, I iteratively tried the different combination to look for the model with the lowest AIC value (172.71). I also looked through the residual values and the ACF and PACF graphs of the residuals to see how the model performed. The model I chose as the best has non-seasonal values of p = 1, d = 1, q = 1, and seasonal values of p = 2, d = 1, q = 1, with the seasonal frequency being 12 for the months. The residuals of this model are all fairly low, and the ACF and PACF graphs only have one spike that goes past the blue dotted line. 
+
+Lastly, there is a forecast plot of the model below that forecasts the next 25 years of data, with a confidence interval on the graph. 
+
+```{r}
+arima_model <- arima(co2, order = c(1,1,1), seas = list(order = c(2,1,2), 12))
+
+arima_model
+```
+
+```{r}
+autoplot(resid(arima_model))
+
+autoplot(acf(resid(arima_model),plot=FALSE)) + theme_classic()
+
+autoplot(pacf(resid(arima_model),plot=FALSE)) + theme_classic()
+```
+```{r}
+myforecast <- forecast(arima_model, level=c(95), h=300)
+
+plot(myforecast)
+```
+
 
 **Part 4 (5 points)**
 
