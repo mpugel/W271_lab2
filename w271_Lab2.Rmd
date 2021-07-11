@@ -118,14 +118,14 @@ summary(co2)
 ```
 
 ```{r}
-autoplot(acf(co2,plot=FALSE)) + theme_classic()
-
-autoplot(pacf(co2,plot=FALSE)) + theme_classic()
+ggAcf(co2)
+ggPacf(co2)
 ```
 
 ```{r}
 boxplot(co2~cycle(co2))
 ```
+
 ```{r}
 
 hist(co2)
@@ -142,6 +142,7 @@ autoplot(decompose_data1)
 Fit a linear time trend model to the `co2` series, and examine the characteristics of the residuals. Compare this to a higher-order polynomial time trend model. Discuss whether a logarithmic transformation of the data would be appropriate. Fit a polynomial time trend model that incorporates seasonal dummy variables, and use this model to generate forecasts up to the present. 
 
 **Response:**
+The linear time trend model and the higher-order polynomial time trend model is shown below. For the two models, the time trend is significant for each scenario, and the residuals of each model actually show a reverse pattern of each other. Based on the residuals plot, and the Q-Q plot, the linear-time trend model would not pass the CLM assumptions. The data would also not be appropriate for a logarithmic transformation because we want to be able to use the predictions from the model to know the carbon dioxide levels, with a logarithmic transformation in a model, it makes it much harder to place the model estimated into context. Also, we normally use log transformation to make the data more normal, however that is not necessary in this case. 
 
 ```{r}
 linear_model <- tslm(co2~trend)
@@ -166,10 +167,12 @@ plot(fitted(quad_model), res)
 qqnorm(res)
 qqline(res) 
 ```
+Below is the seasonal model with that contains a quadratic trend value and seasonal dummy variables. We can see that certain months are significant however certain months are not significant to the model. The residuals plot also has a large curve in it and the Q-Q plot is does not follow the linear line. The forecasted plot is also shown below. From the forecast we can see that the trend seems to increase with intensity in the forecasted values and overall looks like it might over predict some of the values. 
+
 
 ```{r}
-seasonal_model <- tslm(co2~ I(trend^2) + seasonaldummy(co2))
-
+seasonal_model <- tslm(co2~ I(trend^2) + season)
+                       
 summary(seasonal_model)
 
 res <- resid(seasonal_model)
@@ -181,18 +184,18 @@ qqline(res)
 ```
 
 ```{r}
-#forecast <- forecast(seasonal_model, h=300, level=95)
+forecast <- forecast(seasonal_model, h=300, level=95)
 
-#plot(forecast)
+plot(forecast)
 
 ```
-
 
 **Part 3 (4 points)**
 
 Following all appropriate steps, choose an ARIMA model to fit to this `co2` series. Discuss the characteristics of your model and how you selected between alternative ARIMA specifications. Use your model to generate forecasts to the present. 
 
-**Response:**
+**Response:** 
+
 Below I have fitted the best ARIMA model from multiple iterations, the starting point coming from looking at some of the EDA graphs completed above. Since there is a strong seasonality cycle in the decomposition plot, I will be using a seasonal ARIMA model. In a seasonal ARIMA model the format is shown below:            
       ARIMA(p,d,q)(P,D,Q)m
       
@@ -200,30 +203,45 @@ From this model, the lowercase letters are for the non-seasonal terms and the up
 
 From the EDA completed above, there were a key points to take into consideration when deciding what kind of ARIMA model to use. First, from the decomposition plot, there is an obvious trend, which will need to be taken out by differencing once. However, I was not sure if it should be a seasonal or non-seasonal differencing value, therefore I tested both to see which had better results. From the ACF plot in the EDA section, the values do not decline towards zero quickly, therefore the auto-regressive value will definitely not be zero. Lastly, for the PACF graph shows that the model may have a moving average value of 1 or 2 and a seasonal moving average value of 1 or 2. 
 
-With all of these values as starting points, I iteratively tried the different combination to look for the model with the lowest AIC value (172.71). I also looked through the residual values and the ACF and PACF graphs of the residuals to see how the model performed. The model I chose as the best has non-seasonal values of p = 1, d = 1, q = 1, and seasonal values of p = 2, d = 1, q = 1, with the seasonal frequency being 12 for the months. The residuals of this model are all fairly low, and the ACF and PACF graphs only have one spike that goes past the blue dotted line. 
+With all of these values as starting points, I iteratively tried the different combination to look for the model with the lowest AIC value (172.71). Some of the models that came close to having the minimized AIC value are shown below, however I did complete more models at trials than are shown below. I also looked through the residual values and the ACF and PACF graphs of the residuals to see how the model performed. The model I chose as the best has non-seasonal values of p = 1, d = 1, q = 1, and seasonal values of p = 2, d = 1, q = 1, with the seasonal frequency being 12 for the months. The residuals of this model are all fairly low, and the ACF and PACF graphs only have one spike that goes past the blue dotted line. 
 
-Lastly, there is a forecast plot of the model below that forecasts the next 25 years of data, with a confidence interval on the graph. 
+Lastly, there is a forecast plot of the model below that forecasts the next 25 years of data, with a confidence interval on the graph. The confidence level is pretty tight in the beginning but grows wider as we try to predict further out. Overall, the Arima model seems to do a good job. 
 
 ```{r}
-arima_model <- arima(co2, order = c(1,1,1), seas = list(order = c(2,1,2), 12))
+arima_model1 <- arima(co2, order = c(1,1,2), seas = list(order = c(2,1,2), 12))
 
-arima_model
+arima_model1
+
+arima_model2 <- arima(co2, order = c(1,1,2), seas = list(order = c(1,1,2), 12))
+
+arima_model2
+
+arima_model3 <- arima(co2, order = c(1,1,1), seas = list(order = c(1,1,1), 12))
+
+arima_model3
+
+arima_model4 <- arima(co2, order = c(1,1,1), seas = list(order = c(2,1,1), 12))
+
+arima_model4
+
+arima_model5 <- arima(co2, order = c(1,1,1), seas = list(order = c(2,1,2), 12))
+
+arima_model5
 ```
 
 ```{r}
-autoplot(resid(arima_model))
+autoplot(resid(arima_model5))
 
-autoplot(acf(resid(arima_model),plot=FALSE)) + theme_classic()
+ggAcf(resid(arima_model5))
 
-autoplot(pacf(resid(arima_model),plot=FALSE)) + theme_classic()
+ggPacf(resid(arima_model5))
 ```
 
 ```{r}
-myforecast <- forecast(arima_model, level=c(95), h=300)
+myforecast <- forecast(arima_model5, level=c(95), h=300)
 
 plot(myforecast)
 ```
-
 
 **Part 4 (5 points)**
 
