@@ -205,7 +205,9 @@ From the EDA completed above, there were a key points to take into consideration
 
 With all of these values as starting points, we iteratively tried the different combination to look for the model with the lowest AIC value (172.71). Some of the models that came close to having the minimized AIC value are shown below, however we did complete more models at trials than are shown below. We also looked through the residual values and the ACF and PACF graphs of the residuals to see how the model performed. The model we chose as the best has non-seasonal values of p = 1, d = 1, q = 1, and seasonal values of p = 2, d = 1, q = 1, with the seasonal frequency being 12 for the months. The residuals of this model are all fairly low, and the ACF and PACF graphs only have one spike that goes past the blue dotted line. 
 
-Final ARIMA model: ARIMA(1,1,1)(2,1,2)[12]
+Final ARIMA Model: ARIMA(1,1,1)(2,1,2)[12]
+
+Final ARIMA Equation: (1−Φ1B12−Φ2B24)(1−B12)(1−B)yt=(1+θ1B)(1+Θ1B12+Θ2B24)(1+Θ1B+Θ2B)et
 
 Lastly, there is a forecast plot of the model below that forecasts the next 25 years of data, with a confidence interval on the graph. The confidence level is pretty tight in the beginning but grows wider as we try to predict further out. Overall, the Arima model seems to do a good job. 
 
